@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" hidden>
+  <head>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge' />
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <title>Sample Massive Transfusion Protocol Example Demo (POC)</title>
+
+    <link rel='stylesheet' type='text/css' href='./src/css/example-smart-app.css'>
+    <link rel='stylesheet' type='text/css' href='./lib/css/cerner-smart-embeddable-lib-1.0.0.min.css'>
+
+ <link href="https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script src="https://code.jquery.com/jquery-3.1.0.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+
+
+  </head>
+  <body>
+    <div id='errors'>
+    </div>
+    <div id="loading" class="spinner">
+      <div class="bounce1"></div>
+      <div class="bounce2"></div>
+      <div class="bounce3"></div>
+    </div>
+    <div id='holder' >
+      <h2>Sample Massive Sample Transfusion Sample Protocol Sample</h2>
+        <form>
+         <fieldset>
+           <legend>Inputs</legend>
+           <div id="spinner">
+            <label for="mtp_systolicbp">Systolic BP (mmHg):</label>
+            <input id="mtp_systolicbp" class="mtpinput"/>
+           <label for="mtp_heartrate">Heart Rate:</label>
+            <input id="mtp_heartrate" class="mtpinput"/>
+            <label for="mtp_basedeficit">Base Deficit:</label>
+            <input id="mtp_basedeficit" class="mtpinput"/>
+            <fieldset>
+              <legend>Mode of Injury</legend>
+              <label for="mtp_moi_gsw">GSW</label>
+              <input type="radio" name="mtp_moi" id="mtp_moi_gsw" value="gsw" class="mtpinput"/>
+              <label for="mtp_moi_sw">SW</label>
+              <input type="radio" name="mtp_moi" id="mtp_moi_sw" value="sw" class="mtpinput"/>
+              <label for="mtp_moi_blunt">Blunt</label>
+              <input type="radio" name="mtp_moi" id="mtp_moi_blunt" value="blunt" class="mtpinput"/>
+            </fieldset>
+          </div>
+         </fieldset>
+       </form>
+      <div id="result_container">
+        <span id="mtp_result">Fill in the inputs to the MTP calculation. The results will appear here.</span>
+      </div>
+      <input id="mtp_save" type="button" value="Save Calculation" onclick="saveButtonAction()">
+      <h2>Patient Resource</h2>
+      <table>
+        <tr>
+          <th>First Name:</th>
+          <td id='fname'></td>
+        </tr>
+        <tr>
+          <th>Last Name:</th>
+          <td id='lname'></td>
+        </tr>
+        <tr>
+          <th>Gender:</th>
+          <td id='gender'></td>
+        </tr>
+        <tr>
+          <th>Date of Birth:</th>
+          <td id='birthdate'></td>
+        </tr>
+        <tr>
+          <th>Age:</th>
+          <td id='age'></td>
+        </tr>
+      </table>
+      <h2>Observation Resource</h2>
+      <table>
+        <tr>
+          <th>Height:</th>
+          <td id='height'></td>
+        </tr>
+        <tr>
+          <th>Systolic Blood Pressure:</th>
+          <td id='systolicbp'></td>
+
+        </tr>
+        <tr>
+          <th>Diastolic Blood Pressure:</th>
+          <td id='diastolicbp'></td>
+        </tr>
+        <tr>
+          <th>LDL:</th>
+          <td id='ldl'></td>
+        </tr>
+        <tr>
+          <th>HDL:</th>
+          <td id='hdl'></td>
+        </tr>
+        <tr>
+          <th>Heart Rate:</th>
+          <td id='heartrate'></td>
+        </tr>
+      </table>
+    </div>
+
+    <script>
+    var mtpinputs = {
+                heartrate: {value: 0, units: ''},
+                systolicbp: {value: 0, units: ''},
+                diastolicbp: {value: 0, units: ''},
+                basedeficit: {value: 0, units: ''},
+                moi: '',
+
+            };
+    $( "#mtp_systolicbp" ).spinner();
+    $( "#mtp_heartrate" ).spinner();
+    $( "#mtp_basedeficit" ).spinner();
+    $( "input[type='radio']" ).checkboxradio();
+
+    $('#mtp_save').button();
+    $('#mtp_save').button("disable");
+
+    function saveButtonAction() {
+		window.alert("mtpinputs="+mtpinputs);
+    		window.alert("mtpResult="+mtpResult);
+    }
+
+    var mtpResult;
+
+    function displayMTPoutput() {
+            $('#mtp_save').button("enable");
+
+            var resourceUrl = "https://gja5ony41f.execute-api.us-east-1.amazonaws.com/Prod/calculateMtp?"
+                + "heartrate="+mtpinputs.heartrate.value
+                + "&systolicBloodPressure="+mtpinputs.systolicbp.value
+                + "&baseDeficit="+mtpinputs.basedeficit.value
+                + "&moi="+mtpinputs.moi.toUpperCase();
+            console.log("resourceUrl:",resourceUrl);
+
+            $("#mtp_result").html('<img src="./src/images/spinner.gif" width=10% height=50% alt="waiting for mtp calculation"/>');
+
+            var jqXhr = $.ajax({
+                url: resourceUrl,
+                method: "GET",
+                headers: {
+                    "Accept":"application/json"
+                }
+            });
+
+            jqXhr
+            .done(function(data) {
+                console.log('common callback', data);
+                mtpResult = data;
+
+                if (mtpResult) {
+                    $("#mtp_result").css("color","white");
+                    if (mtpResult.errors) {
+                        $('#mtp_save').button("disable");
+                        $("#result_container").css("background-color","black");
+                        $("#mtp_result").html("Can't compute prob.<BR/>"+mtpResult.errors);
+                        return;
+                    }
+                    adj = mtpResult.adj;
+                    image = '<img src="./src/images/'+adj+'.png" alt="'+mtpResult.mtpProbabilityText+'">';
+                    $("#mtp_result").html(image+"("+mtpResult.p+") "+mtpResult.mtpProbabilityText);
+                    $("#mtp_result").css("color","white");
+                    if (adj==="high") {
+                        $("#result_container").css("background-color","red");
+                    } else if (adj==="moderate") {
+                        $("#result_container").css("background-color","orange");
+                    } else if (adj==="low") {
+                        $("#result_container").css("background-color","yellow");
+                        $("#mtp_result").css("color","black");
+                    } else if (adj==="verylow") {
+                        $("#result_container").css("background-color","#72F54A");
+                    } else {
+                        $('#mtp_save').button("disable");
+                        $("#mtp_result").html("ERROR: There was an error classifying the probability.");
+                        $("#result_container").css("background-color","black");
+                        $("#mtp_result").css("color","white");
+                    }
+                } else {
+                    $("#mtp_result").html("Not enough data.");
+                    $("#result_container").css("background-color","black");
+                    $("#result_container").css("color","white");
+                    $('#mtp_save').button("disable");
+                }
+            })
+            .fail(function(xhr) {
+                console.log('error common back', xhr);
+                $("#mtp_result").html("Error: "+xhr);
+                $("#result_container").css("background-color","black");
+                $("#result_container").css("color","white");
+                $('#mtp_save').button("disable");
+            });
+    }
+
+
+    </script>
+    <!-- Required JS files to enable this page to embed within an MPage -->
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js'></script>
+    <script src='./lib/js/cerner-smart-embeddable-lib-1.0.0.min.js'></script>
+
+    <!-- Application-level javascript-->
+    <script src='./src/js/example-smart-mtp-app.js'></script>
+
+    <!-- FHIR Client JS Library -->
+    <script src='./lib/js/fhir-client-v0.1.12.js'></script>
+
+    <!-- Prevent session bleed caused by single threaded embedded browser and sessionStorage API -->
+    <!-- https://github.com/cerner/fhir-client-cerner-additions -->
+    <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
+    <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>-->
+    <script>
+      extractData().then(
+        //Display Patient Demographics and Observations if extractData was success
+        function(p) {
+            drawVisualization(p);
+            mtpinputs = p.mtpinputs;
+            $('.mtpinput').spinner({
+                stop:function(e,ui){
+                    val = this.value;
+                    if( !this.value ) {
+                        //alert( "Please enter some text!" );
+                    } else {
+                        if (this.id==='mtp_systolicbp') mtpinputs.systolicbp.value=this.value;
+                        if (this.id==='mtp_heartrate') mtpinputs.heartrate.value=this.value;
+                        if (this.id==='mtp_basedeficit') mtpinputs.basedeficit.value=this.value;
+                        displayMTPoutput();
+                    }
+                }
+            });
+            $( ".mtpinput" ).on( "change", function() {
+                if( !this.value ) {
+                    //alert( "Please enter some text!" );
+                } else {
+                    if (this.name==='mtp_moi') mtpinputs.moi=this.value;
+                    displayMTPoutput();
+                }
+            });
+            $( ".mtpinput" ).on( "spinchange", function() {
+                if( !this.value ) {
+                    //alert( "Please enter some text!" );
+                } else {
+                    if (this.id==='mtp_systolicbp') mtpinputs.systolicbp.value=this.value;
+                    if (this.id==='mtp_heartrate') mtpinputs.heartrate.value=this.value;
+                    if (this.id==='mtp_basedeficit') mtpinputs.basedeficit.value=this.value;
+                    displayMTPoutput();
+                }
+            });
+
+        },
+
+        //Display 'Failed to call FHIR Service' if extractData failed
+        function() {
+          $('#loading').hide();
+          $('#errors').html('<p> Failed to call FHIR Service </p>');
+        }
+      );
+    </script>
+  </body>
+</html>
